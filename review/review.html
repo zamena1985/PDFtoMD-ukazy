@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Проверка Markdown-указов</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#f4f4f6; --fg:#1b1b1f; --line:#d6d6dc; --accent:#0b63c6; --ok:#1d8f3a; --warn:#b36b00; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:14px/1.45 Arial, "Segoe UI", sans-serif; }
+  header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:8px 12px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  header select { max-width:360px; padding:4px 6px; font-size:14px; }
+  header button, header a.btn { padding:4px 10px; border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer; font-size:14px; color:var(--fg); text-decoration:none; }
+  header button:hover, header a.btn:hover { border-color:var(--accent); color:var(--accent); }
+  .counter { color:#555; min-width:90px; }
+  .flags { color:var(--warn); flex-basis:100%; font-size:13px; }
+  .flags:empty { display:none; }
+  label.chk { display:flex; align-items:center; gap:6px; cursor:pointer; }
+  label.chk input { width:18px; height:18px; }
+  input.note { flex:1 1 220px; min-width:160px; padding:4px 8px; border:1px solid var(--line); border-radius:6px; font-size:14px; }
+  main { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; padding:8px; height:calc(100% - 58px); }
+  main.noold { grid-template-columns:1fr 1fr 1fr; }
+  main.noold #oldpane { display:none; }
+  .pane { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; display:flex; flex-direction:column; min-height:0; }
+  .pane h2 { margin:0; padding:6px 12px; font-size:13px; font-weight:normal; color:#555; border-bottom:1px solid var(--line); background:#fafafa; display:flex; justify-content:space-between; align-items:center; }
+  .pane h2 a { color:var(--accent); text-decoration:none; }
+  iframe { flex:1; border:0; width:100%; }
+  .rend { flex:1; overflow:auto; padding:14px 22px; font-family:"Times New Roman", Georgia, serif; font-size:15px; line-height:1.5; }
+  .rend h1 { font-size:19px; text-align:center; margin:4px 0 14px; }
+  .rend h2 { font-size:17px; text-align:center; margin:14px 0 8px; }
+  .rend h3 { font-size:16px; margin:12px 0 6px; }
+  .rend p { margin:0 0 10px; text-align:justify; }
+  .rend [align="center"], .rend div[align="center"] h1 { text-align:center; }   /* HTML-вставки выравнивания сильнее общего правила */
+  .rend [align="right"] { text-align:right; }
+  .rend table { border-collapse:collapse; margin:10px 0; width:100%; font-size:14px; }
+  .rend th, .rend td { border:1px solid #888; padding:4px 7px; vertical-align:top; }
+  .rend pre { white-space:pre-wrap; font:13px/1.4 Consolas, monospace; background:#f7f7f9; padding:10px; border:1px solid var(--line); border-radius:6px; }
+  .rend .err { color:#b00020; }
+  .done { color:var(--ok); }
+  /* колонка «Было»: сводка изменённых абзацев над прежней версией */
+  .diff { margin:0 0 14px; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:#fafafa; font:13px/1.4 Arial, sans-serif; }
+  .diff .cap { color:#555; margin:0 0 6px; }
+  .dpair { border-top:1px dashed var(--line); padding-top:6px; margin-top:6px; }
+  .dblk { padding:4px 8px; margin:0 0 5px; border-radius:5px; font-family:"Times New Roman", Georgia, serif; font-size:14px; white-space:pre-wrap; }
+  .dwas { background:#fdecec; border:1px solid #f3b4b4; } .dnow { background:#e9f7ec; border:1px solid #a9dcb4; }
+  .same { color:var(--ok); } .changed { color:var(--warn); }
+  #plain { flex:1; overflow:auto; padding:14px 18px; font-family:"Times New Roman", Georgia, serif; font-size:15px; line-height:1.5; }
+  #plain p { margin:0; text-indent:1.8em; text-align:justify; }   /* как в PDF: абзацы подряд, виден только отступ первой строки */
+  #plain p.h { text-indent:0; text-align:center; font-weight:bold; margin:6px 0 12px; }
+  #plain p.c { text-indent:0; text-align:center; }
+  #plain p.r { text-indent:0; text-align:right; margin:6px 0; }
+  #plain table.t { border-collapse:collapse; margin:6px 0 10px; }
+  #plain table.t td { border:0; padding:1px 14px 1px 0; vertical-align:top; }
+  @media (max-width: 1200px) { main { grid-template-columns:1fr 1fr; } }
+  @media (max-width: 900px) { main { grid-template-columns:1fr; height:auto; } iframe { height:70vh; } }
+</style>
+</head>
+<body>
+<header>
+  <button id="prev" title="Предыдущий (←)">←</button>
+  <select id="list"></select>
+  <button id="next" title="Следующий (→)">→</button>
+  <span class="counter" id="counter"></span>
+  <label class="chk"><input type="checkbox" id="done"> проверено <kbd>V</kbd></label>
+  <input class="note" id="note" placeholder="заметка к документу (хранится в браузере)">
+  <button id="raw" title="Показать исходный Markdown">исходник</button>
+  <button id="toggleold" title="Показать или скрыть колонку с прежней версией">скрыть «было»</button>
+  <a class="btn" id="vscode" href="#" title="Открыть .md в VS Code">VS Code</a>
+  <a class="btn" id="pdflink" href="#" target="_blank">PDF в новой вкладке</a>
+  <span id="progress" class="counter"></span>
+  <div class="flags" id="flags"></div>
+</header>
+<main>
+  <section class="pane"><h2><span>PDF</span><span id="pdfname"></span></h2><iframe id="pdf" title="PDF"></iframe></section>
+  <section class="pane"><h2><span>Markdown, как его увидит читатель</span><span id="mdname"></span></h2><div id="md" class="rend"></div></section>
+  <section class="pane"><h2><span>Только текст, без разметки</span><span>для сверки слов с PDF</span></h2><div id="plain"></div></section>
+  <section class="pane" id="oldpane"><h2><span>Было: прежняя версия</span><span id="olddiff"></span></h2><div id="old" class="rend"></div></section>
+</main>
+<script src="marked.min.js"></script>
+<script>
+(async function(){
+  // Пути отдаёт review.py в config.json; без него страница ждёт папки md_draft/, ukazy/, md_prev/ рядом с собой.
+  const cfg = await fetch('config.json?' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null) || {};
+  const MD_ROOT = cfg.md || 'md_draft/', PDF_ROOT = cfg.pdf || 'ukazy/', OLD_ROOT = cfg.prev || 'md_prev/';
+  const LOCAL_MD_DIR = cfg.local_md_dir || '';
+  const HAVE_PREV = 'prev' in cfg ? !!cfg.prev : true;
+  const docs = await (await fetch(MD_ROOT + 'docs.json?' + Date.now())).json();   // [{id:'ru/1002', pages:2, flags:[...]}]
+  const state = JSON.parse(localStorage.getItem('ukazy-review') || '{"done":{},"notes":{},"last":null}');
+  const save = () => localStorage.setItem('ukazy-review', JSON.stringify(state));
+  const $ = id => document.getElementById(id);
+  let i = 0, showRaw = false;
+  const byId = Object.fromEntries(docs.map((d, k) => [d.id, k]));
+  if (location.hash && byId[location.hash.slice(1)] !== undefined) i = byId[location.hash.slice(1)];
+  else if (state.last && byId[state.last] !== undefined) i = byId[state.last];
+
+  function fillList(){
+    $('list').innerHTML = docs.map((d, k) => `<option value="${k}">${state.done[d.id] ? '✓ ' : ''}${d.flags.length ? '✱ ' : ''}${d.id}  (${d.pages} стр.)</option>`).join('');
+    $('list').value = i;
+    const n = Object.keys(state.done).filter(k => state.done[k]).length;
+    $('progress').textContent = `проверено ${n} из ${docs.length}`;
+  }
+  async function show(){
+    const d = docs[i]; state.last = d.id; save(); location.hash = d.id;
+    $('counter').textContent = `${i + 1} / ${docs.length}`;
+    $('done').checked = !!state.done[d.id];
+    $('note').value = state.notes[d.id] || '';
+    $('flags').textContent = d.flags.length ? 'Скрипт просит взглянуть: ' + d.flags.join('; ') : '';
+    $('pdfname').textContent = d.id + '.pdf'; $('mdname').textContent = d.id + '.md';
+    const pdfUrl = PDF_ROOT + d.id + '.pdf';
+    $('pdf').src = pdfUrl + '#toolbar=0&view=FitH'; $('pdflink').href = pdfUrl;
+    $('vscode').href = 'vscode://file/' + LOCAL_MD_DIR + d.id + '.md';
+    let txt = '';
+    try {
+      txt = await (await fetch(MD_ROOT + d.id + '.md?' + Date.now())).text();
+      $('md').innerHTML = showRaw ? '<pre></pre>' : marked.parse(txt, {gfm: true, breaks: false});
+      if (showRaw) $('md').firstChild.textContent = txt;
+      $('plain').innerHTML = plainHtml(txt);
+    } catch (e) { $('md').innerHTML = '<p class="err">Не удалось загрузить ' + d.id + '.md: ' + e + '</p>'; }
+    $('md').scrollTop = 0; $('plain').scrollTop = 0; fillList();
+    await showOld(d.id, txt);
+  }
+  // Четвёртая колонка: прежняя версия файла (md_prev, снимок от 08.11) и список абзацев, которые изменились по тексту.
+  // Сравнение идёт без учёта отступов, HTML-вставок и широких пробелов, чтобы видеть именно смысловые правки.
+  function normBlocks(t){
+    t = t.replace(/\r/g, '').replace(/^ +/gm, '').replace(/<\/?div[^>]*>|<\/?p[^>]*>/g, '').replace(/<br>/g, ' ').replace(/ /g, '').replace(/&emsp;/g, '').replace(/\\([*+])/g, '$1');
+    return t.split(/\n\s*\n/).map(b => b.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+  function blockDiff(a, b){            // наибольшая общая подпоследовательность абзацев -> группы {was, now}
+    const n = a.length, m = b.length, L = Array.from({length: n + 1}, () => new Uint16Array(m + 1));
+    for (let x = n - 1; x >= 0; x--) for (let y = m - 1; y >= 0; y--) L[x][y] = a[x] === b[y] ? L[x + 1][y + 1] + 1 : Math.max(L[x + 1][y], L[x][y + 1]);
+    const out = []; let x = 0, y = 0, was = [], now = [];
+    const flush = () => { if (was.length || now.length) out.push({was, now}); was = []; now = []; };
+    while (x < n && y < m) {
+      if (a[x] === b[y]) { flush(); x++; y++; }
+      else if (L[x + 1][y] >= L[x][y + 1]) was.push(a[x++]);
+      else now.push(b[y++]);
+    }
+    while (x < n) was.push(a[x++]);
+    while (y < m) now.push(b[y++]);
+    flush();
+    return out;
+  }
+  async function showOld(id, newTxt){
+    let old = null;
+    try { const r = await fetch(OLD_ROOT + id + '.md?' + Date.now()); if (r.ok) old = await r.text(); } catch (e) {}
+    if (old === null) { $('old').innerHTML = '<p class="err">Прежней версии этого файла нет</p>'; $('olddiff').textContent = ''; return; }
+    const changes = blockDiff(normBlocks(old), normBlocks(newTxt));
+    const nWas = changes.reduce((s, c) => s + c.was.length, 0), nNow = changes.reduce((s, c) => s + c.now.length, 0);
+    $('olddiff').innerHTML = changes.length ? `<span class="changed">текст изменён: было ${nWas} абз., стало ${nNow}</span>` : '<span class="same">текст тот же, отличия только в оформлении</span>';
+    const box = (arr, cls) => arr.length ? arr.map(b => '<div class="dblk ' + cls + '">' + inline(b) + '</div>').join('') : '<div class="dblk ' + cls + '">(ничего)</div>';
+    const panel = changes.length
+      ? '<div class="diff"><div class="cap">Изменённые абзацы: красное было, зелёное стало. Отступы, HTML-вставки и красные строки здесь не учитываются.</div>'
+        + changes.map(c => '<div class="dpair">' + box(c.was, 'dwas') + box(c.now, 'dnow') + '</div>').join('') + '</div>'
+      : '';
+    $('old').innerHTML = panel + (showRaw ? '<pre></pre>' : marked.parse(old, {gfm: true, breaks: false}));
+    if (showRaw) $('old').lastChild.textContent = old;
+    $('old').scrollTop = 0;
+  }
+  // Третья колонка: текст файла без знаков Markdown, но с его смыслом: заголовки жирные по центру,
+  // абзацы с красной строкой, жирное и курсив сохранены, таблицы без рамок. Нумерация как в файле («1)»).
+  function esc(s){ return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function inline(s){
+    s = esc(s);
+    s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    s = s.replace(/\\([*+])/g, '$1');   // экранированная звёздочка сноски
+    s = s.replace(/&amp;emsp;/g, '&emsp;');   // красная строка записана сущностями &emsp;
+    s = s.replace(/(^|[^*])\*(?!\s)([^*\n]+?)(?<!\s)\*(?!\*)/g, '$1<i>$2</i>');   // одиночная звёздочка сноски не трогается
+    return s;
+  }
+  function plainHtml(txt){
+    const out = [];
+    for (const blk of txt.split(/\n\s*\n/)) {
+      // отступы вложенных списков (пробелы в начале строк) в PDF-виде не нужны: там подпункты идут с красной строки
+      const lines = blk.split('\n').map(l => l.replace(/^ +/, '')).filter(l => l.trim() !== '');
+      if (!lines.length) continue;
+      if (lines.length === 1 && /^<\/?div\b/.test(lines[0])) continue;   // обёртка <div align="center"> вокруг заголовка
+      const pa = lines.join(' ').match(/^<p align="(center|right)">([\s\S]*)<\/p>$/);
+      if (pa) { out.push('<p class="' + (pa[1] === 'right' ? 'r' : 'c') + '">' + inline(pa[2]).replace(/&lt;br&gt;/g, '<br>') + '</p>'); continue; }
+      if (lines.every(l => /^\|/.test(l))) {
+        const rows = lines.filter(l => !/^\|\s*-{2,}/.test(l)).map(l => l.replace(/^\||\|$/g, '').split('|').map(c => inline(c.trim())));
+        out.push('<table class="t">' + rows.map(r => '<tr>' + r.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') + '</table>');
+        continue;
+      }
+      const m = lines[0].match(/^(#{1,6})\s+(.*)$/);
+      if (m) { out.push('<p class="h">' + inline(m[2]) + '</p>'); continue; }
+      out.push('<p>' + lines.map(inline).join(' ') + '</p>');
+    }
+    return out.join('');
+  }
+  function go(k){ if (k < 0 || k >= docs.length) return; i = k; show(); }
+  $('prev').onclick = () => go(i - 1); $('next').onclick = () => go(i + 1);
+  $('list').onchange = e => go(+e.target.value);
+  $('done').onchange = e => { state.done[docs[i].id] = e.target.checked; save(); fillList(); };
+  $('note').oninput = e => { state.notes[docs[i].id] = e.target.value; save(); };
+  $('raw').onclick = () => { showRaw = !showRaw; $('raw').textContent = showRaw ? 'отрисовка' : 'исходник'; show(); };
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight') go(i + 1);
+    else if (e.key === 'ArrowLeft') go(i - 1);
+    else if (e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'м') { $('done').checked = !$('done').checked; $('done').onchange({target: $('done')}); }
+  });
+  window.addEventListener('focus', show);   // вернулись из редактора - перечитать файл
+  $('toggleold').onclick = () => {
+    const m = document.querySelector('main'); m.classList.toggle('noold');
+    state.noold = m.classList.contains('noold'); save();
+    $('toggleold').textContent = state.noold ? 'показать «было»' : 'скрыть «было»';
+  };
+  if (!HAVE_PREV) { document.querySelector('main').classList.add('noold'); $('toggleold').style.display = 'none'; }
+  else if (state.noold) { document.querySelector('main').classList.add('noold'); $('toggleold').textContent = 'показать «было»'; }
+  if (!LOCAL_MD_DIR) $('vscode').style.display = 'none';
+  fillList(); show();
+})();
+</script>
+</body>
+</html>
