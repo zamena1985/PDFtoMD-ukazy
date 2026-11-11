@@ -39,7 +39,7 @@ def browser():
 def main():
     md = open(SRC, encoding="utf-8").read()
     html = MarkdownIt("commonmark").enable("table").render(md)
-    page = f'<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Гайд pdf2md-ukazy</title><style>{CSS}</style></head><body>{html}</body></html>'
+    page = f'<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Гайд PDFtoMD-ukazy</title><style>{CSS}</style></head><body>{html}</body></html>'
     tmp = os.path.join(HERE, "_guide_tmp.html")          # рядом с картинками, чтобы относительные пути работали
     open(tmp, "w", encoding="utf-8").write(page)
     prof = tempfile.mkdtemp(prefix="chrome-guide-")

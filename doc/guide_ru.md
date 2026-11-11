@@ -29,9 +29,9 @@
 
 ## 3. Установка программы
 
-1. Откройте страницу программы на GitHub: https://github.com/zamena1985/pdf2md-ukazy
+1. Откройте страницу программы на GitHub: https://github.com/zamena1985/PDFtoMD-ukazy
 2. Нажмите зелёную кнопку **Code**, затем **Download ZIP**.
-3. Распакуйте архив в удобное место, например `D:\pdf2md-ukazy`. Внутри должны лежать файлы
+3. Распакуйте архив в удобное место, например `D:\PDFtoMD-ukazy`. Внутри должны лежать файлы
    `start.bat`, `install.bat`, `pdf2md.py` и папка `review`.
 4. Запустите двойным щелчком **install.bat**. Откроется окно, в нём скачается библиотека для чтения PDF.
    В конце появится надпись «Done. Now run start.bat». Нажмите любую клавишу, окно закроется.
@@ -203,4 +203,4 @@ python3 review.py --pdf /путь/к/pdf --md /путь/к/результату
 - **Страница показывает старую версию файлов.** Нажмите Ctrl+F5 в браузере.
 
 Вопросы и ошибки можно писать на странице программы в разделе Issues:
-https://github.com/zamena1985/pdf2md-ukazy/issues
+https://github.com/zamena1985/PDFtoMD-ukazy/issues
