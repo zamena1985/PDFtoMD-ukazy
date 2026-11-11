@@ -47,6 +47,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 def main():
     ap = argparse.ArgumentParser(description="Страница проверки Markdown против PDF")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")       # буквы вне кодировки консоли не роняют скрипт
     ap.add_argument("--pdf", required=True, help="папка с PDF (внутри ru/ и sah/)")
     ap.add_argument("--md", required=True, help="папка с результатом pdf2md.py (внутри ru/, sah/, docs.json)")
     ap.add_argument("--prev", help="прежняя версия результата для колонки «Было»")

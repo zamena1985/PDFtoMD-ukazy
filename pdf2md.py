@@ -435,6 +435,8 @@ def convert(pdf_path, report):
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")       # буквы вне кодировки консоли не роняют скрипт
     src, dst = args[0], args[1]
     only = set(sys.argv[sys.argv.index("--only") + 1:]) if "--only" in sys.argv else None
     report_all = {}

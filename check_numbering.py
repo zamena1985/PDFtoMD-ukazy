@@ -32,6 +32,8 @@ def source_numbers(md):
 
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "."
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")       # буквы вне кодировки консоли не роняют скрипт
     parser = MarkdownIt("commonmark").enable("table")
     files = bad = 0
     for lang in sorted(os.listdir(root)):
